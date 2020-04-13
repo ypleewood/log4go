@@ -32,8 +32,9 @@ type FileLogWriter struct {
 	maxsize_cursize int
 
 	// Rotate daily
-	daily          bool
-	daily_opendate int
+	daily            bool
+	daily_opendate   int
+	max_daily_backup int
 
 	// Keep old logfiles (.001, .002, etc)
 	rotate    bool
@@ -60,10 +61,11 @@ func (w *FileLogWriter) Close() {
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
 func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+	today := time.Now().AddDate(0, 0, 0).Format("2006-01-02")
 	w := &FileLogWriter{
 		rec:       make(chan *LogRecord, LogBufferLength),
 		rot:       make(chan bool),
-		filename:  fname,
+		filename:  fname + fmt.Sprintf(".%s.log", today),
 		format:    "[%D %T] [%L] (%S) %M",
 		rotate:    rotate,
 		maxbackup: 999,
@@ -81,6 +83,16 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 				w.file.Close()
 			}
+
+			//delete log file
+			deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
+			deletefname := fname + fmt.Sprintf(".%s.log", deleteday)
+			_, err := os.Stat(deletefname)
+
+			if !os.IsNotExist(err) {
+				err := os.Remove(deletefname)
+			}
+
 		}()
 
 		for {
@@ -249,6 +261,12 @@ func (w *FileLogWriter) SetRotateMaxBackup(maxbackup int) *FileLogWriter {
 func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotate: %v\n", rotate)
 	w.rotate = rotate
+	return w
+}
+
+func (w *FileLogWriter) SetMaxDailyBackup(max int) *FileLogWriter {
+	//fmt.Fprintf(os.Stderr, "FileLogWriter.SetRotate: %v\n", rotate)
+	w.max_daily_backup = max
 	return w
 }
 
