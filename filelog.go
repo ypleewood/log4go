@@ -168,6 +168,12 @@ func (w *FileLogWriter) intRotate() error {
 						os.Rename(fname, nfname)
 					}
 				}
+
+				// Rename the file to its newfound home
+				err = os.Rename(w.filename, fname)
+				if err != nil {
+					return fmt.Errorf("Rotate: %s\n", err)
+				}
 			}
 			/*if w.daily && time.Now().Day() != w.daily_opendate {
 				yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
@@ -193,11 +199,7 @@ func (w *FileLogWriter) intRotate() error {
 			}*/
 
 			w.file.Close()
-			// Rename the file to its newfound home
-			err = os.Rename(w.filename, fname)
-			if err != nil {
-				return fmt.Errorf("Rotate: %s\n", err)
-			}
+
 		}
 	}
 
