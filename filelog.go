@@ -296,8 +296,8 @@ func (w *FileLogWriter) SetMaxDailyBackup(max int) *FileLogWriter {
 
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
-func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate).SetFormat(
+func NewXMLLogWriter(fname string, rotate bool, max_daily_backup int) *FileLogWriter {
+	return NewFileLogWriter(fname, rotate, max_daily_backup).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>

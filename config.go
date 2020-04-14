@@ -245,6 +245,8 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 			daily = strings.Trim(prop.Value, " \r\n") != "false"
 		case "rotate":
 			rotate = strings.Trim(prop.Value, " \r\n") != "false"
+		case "maxdailybackup":
+			max_daily_backup, _ = strconv.Atoi(prop.Value)
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for xml filter in %s\n", prop.Name, filename)
 		}
@@ -261,7 +263,7 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 		return nil, true
 	}
 
-	xlw := NewXMLLogWriter(file, rotate)
+	xlw := NewXMLLogWriter(file, rotate, max_daily_backup)
 	xlw.SetRotateLines(maxrecords)
 	xlw.SetRotateSize(maxsize)
 	xlw.SetRotateDaily(daily)
