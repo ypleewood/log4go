@@ -60,17 +60,17 @@ func (w *FileLogWriter) Close() {
 //
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+func NewFileLogWriter(fname string, rotate bool, daily_max_backup int) *FileLogWriter {
 	today := time.Now().AddDate(0, 0, 0).Format("2006-01-02")
 	w := &FileLogWriter{
-		rec:       make(chan *LogRecord, LogBufferLength),
-		rot:       make(chan bool),
-		filename:  fname + fmt.Sprintf(".%s.log", today),
-		format:    "[%D %T] [%L] (%S) %M",
-		rotate:    rotate,
-		maxbackup: 999,
+		rec:              make(chan *LogRecord, LogBufferLength),
+		rot:              make(chan bool),
+		filename:         fname + fmt.Sprintf(".%s.log", today),
+		format:           "[%D %T] [%L] (%S) %M",
+		rotate:           rotate,
+		max_daily_backup: daily_max_backup,
+		maxbackup:        999,
 	}
-
 	// open the file for the first time
 	if err := w.intRotate(fname); err != nil {
 		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
