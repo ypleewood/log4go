@@ -196,6 +196,8 @@ func (w *FileLogWriter) intRotate(basename string) error {
 		for i := 0; err == nil && i <= w.maxbackup; i++ {
 			if i != 0 {
 				deletefname = basename + fmt.Sprintf(".%s.log.%d", deleteday, i)
+			} else {
+				deletefname = basename + fmt.Sprintf(".%s.log", deleteday)
 			}
 			_, err := os.Stat(deletefname)
 
