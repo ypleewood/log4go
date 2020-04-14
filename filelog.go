@@ -72,24 +72,13 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 	}
 
 	// open the file for the first time
-	if err := w.intRotate(); err != nil {
+	if err := w.intRotate(fname); err != nil {
 		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 		return nil
 	}
 
 	go func() {
 		defer func() {
-			//delete log file
-			deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
-			deletefname := fname + fmt.Sprintf(".%s.log", deleteday)
-			_, err := os.Stat(deletefname)
-
-			if !os.IsNotExist(err) {
-				if err := os.Remove(deletefname); err != nil {
-					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-				}
-			}
-
 			if w.file != nil {
 				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
 				w.file.Close()
@@ -100,7 +89,7 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 		for {
 			select {
 			case <-w.rot:
-				if err := w.intRotate(); err != nil {
+				if err := w.intRotate(fname); err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 					return
 				}
@@ -112,7 +101,7 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
 					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
 					(w.daily && now.Day() != w.daily_opendate) {
-					if err := w.intRotate(); err != nil {
+					if err := w.intRotate(fname); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
 					}
@@ -141,7 +130,7 @@ func (w *FileLogWriter) Rotate() {
 }
 
 // If this is called in a threaded context, it MUST be synchronized
-func (w *FileLogWriter) intRotate() error {
+func (w *FileLogWriter) intRotate(basename string) error {
 	// Close any log file that may be open
 	if w.file != nil {
 		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
@@ -173,6 +162,23 @@ func (w *FileLogWriter) intRotate() error {
 				err = os.Rename(w.filename, fname)
 				if err != nil {
 					return fmt.Errorf("Rotate: %s\n", err)
+				}
+
+				//delete log file
+				deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
+				deletefname := ""
+				for i := 0; err == nil && i <= w.maxbackup; i++ {
+					if i != 0 {
+						deletefname = basename + fmt.Sprintf(".%s.log.%d", deleteday, i)
+					}
+					_, err := os.Stat(deletefname)
+
+					if !os.IsNotExist(err) {
+						if err := os.Remove(deletefname); err != nil {
+							fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+						}
+					}
+
 				}
 			}
 			/*if w.daily && time.Now().Day() != w.daily_opendate {
