@@ -231,6 +231,7 @@ func xmlToXMLLogWriter(filename string, props []xmlProperty, enabled bool) (*Fil
 	maxsize := 0
 	daily := false
 	rotate := false
+	max_daily_backup := 7
 
 	// Parse properties
 	for _, prop := range props {
