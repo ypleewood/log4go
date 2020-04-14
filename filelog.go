@@ -79,18 +79,20 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 
 	go func() {
 		defer func() {
-			if w.file != nil {
-				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
-				w.file.Close()
-			}
-
 			//delete log file
 			deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
 			deletefname := fname + fmt.Sprintf(".%s.log", deleteday)
 			_, err := os.Stat(deletefname)
 
 			if !os.IsNotExist(err) {
-				err := os.Remove(deletefname)
+				if err := os.Remove(deletefname); err != nil {
+					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+				}
+			}
+
+			if w.file != nil {
+				fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
+				w.file.Close()
 			}
 
 		}()
