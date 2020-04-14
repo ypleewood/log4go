@@ -163,23 +163,6 @@ func (w *FileLogWriter) intRotate(basename string) error {
 				if err != nil {
 					return fmt.Errorf("Rotate: %s\n", err)
 				}
-
-				//delete log file
-				deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
-				deletefname := ""
-				for i := 0; err == nil && i <= w.maxbackup; i++ {
-					if i != 0 {
-						deletefname = basename + fmt.Sprintf(".%s.log.%d", deleteday, i)
-					}
-					_, err := os.Stat(deletefname)
-
-					if !os.IsNotExist(err) {
-						if err := os.Remove(deletefname); err != nil {
-							fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-						}
-					}
-
-				}
 			}
 			/*if w.daily && time.Now().Day() != w.daily_opendate {
 				yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
@@ -203,10 +186,27 @@ func (w *FileLogWriter) intRotate(basename string) error {
 					}
 				}
 			}*/
-
 			w.file.Close()
 
 		}
+
+		//delete log file
+		deleteday := time.Now().AddDate(0, 0, -w.max_daily_backup).Format("2006-01-02")
+		deletefname := ""
+		for i := 0; err == nil && i <= w.maxbackup; i++ {
+			if i != 0 {
+				deletefname = basename + fmt.Sprintf(".%s.log.%d", deleteday, i)
+			}
+			_, err := os.Stat(deletefname)
+
+			if !os.IsNotExist(err) {
+				if err := os.Remove(deletefname); err != nil {
+					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+				}
+			}
+
+		}
+
 	}
 
 	// Open the log file
