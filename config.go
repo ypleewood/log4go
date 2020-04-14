@@ -200,7 +200,7 @@ func xmlToFileLogWriter(filename string, props []xmlProperty, enabled bool) (*Fi
 		case "rotate":
 			rotate = strings.Trim(prop.Value, " \r\n") != "false"
 		case "maxdailybackup":
-			max_daily_backup, err = strconv.Atoi(prop.Value)
+			max_daily_backup, _ = strconv.Atoi(prop.Value)
 		default:
 			fmt.Fprintf(os.Stderr, "LoadConfiguration: Warning: Unknown property \"%s\" for file filter in %s\n", prop.Name, filename)
 		}
