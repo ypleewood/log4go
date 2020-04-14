@@ -155,7 +155,21 @@ func (w *FileLogWriter) intRotate() error {
 			// Find the next available number
 			num := 1
 			fname := ""
-			if w.daily && time.Now().Day() != w.daily_opendate {
+
+			if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
+				(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
+				(w.daily && time.Now().Day() != w.daily_opendate) {
+				num = w.maxbackup - 1
+				for ; num >= 1; num-- {
+					fname = w.filename + fmt.Sprintf(".%d", num)
+					nfname := w.filename + fmt.Sprintf(".%d", num+1)
+					_, err = os.Lstat(fname)
+					if err == nil {
+						os.Rename(fname, nfname)
+					}
+				}
+			}
+			/*if w.daily && time.Now().Day() != w.daily_opendate {
 				yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 
 				for ; err == nil && num <= w.maxbackup; num++ {
@@ -176,7 +190,7 @@ func (w *FileLogWriter) intRotate() error {
 						os.Rename(fname, nfname)
 					}
 				}
-			}
+			}*/
 
 			w.file.Close()
 			// Rename the file to its newfound home
