@@ -61,18 +61,18 @@ func (w *FileLogWriter) Close() {
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
 func NewFileLogWriter(fname string, rotate bool, daily_max_backup int) *FileLogWriter {
-	today := time.Now().AddDate(0, 0, 0).Format("2006-01-02")
+	//today := time.Now().AddDate(0, 0, 0).Format("2006-01-02")
 	w := &FileLogWriter{
 		rec:              make(chan *LogRecord, LogBufferLength),
 		rot:              make(chan bool),
-		filename:         fname + fmt.Sprintf(".%s.log", today),
+		filename:         fname, // + fmt.Sprintf(".%s.log", today),
 		format:           "[%D %T] [%L] (%S) %M",
 		rotate:           rotate,
 		max_daily_backup: daily_max_backup,
 		maxbackup:        999,
 	}
 	// open the file for the first time
-	if err := w.intRotate(fname); err != nil {
+	if err := w.intRotate(); err != nil {
 		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 		return nil
 	}
@@ -89,7 +89,7 @@ func NewFileLogWriter(fname string, rotate bool, daily_max_backup int) *FileLogW
 		for {
 			select {
 			case <-w.rot:
-				if err := w.intRotate(fname); err != nil {
+				if err := w.intRotate(); err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 					return
 				}
@@ -101,7 +101,7 @@ func NewFileLogWriter(fname string, rotate bool, daily_max_backup int) *FileLogW
 				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
 					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
 					(w.daily && now.Day() != w.daily_opendate) {
-					if err := w.intRotate(fname); err != nil {
+					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
 					}
@@ -130,7 +130,10 @@ func (w *FileLogWriter) Rotate() {
 }
 
 // If this is called in a threaded context, it MUST be synchronized
-func (w *FileLogWriter) intRotate(basename string) error {
+func (w *FileLogWriter) intRotate() error {
+	today := time.Now().AddDate(0, 0, 0).Format("2006-01-02")
+	currentName := w.filename + fmt.Sprintf(".%s.log", today)
+
 	// Close any log file that may be open
 	if w.file != nil {
 		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
@@ -139,7 +142,7 @@ func (w *FileLogWriter) intRotate(basename string) error {
 
 	// If we are keeping log files, move it to the next available number
 	if w.rotate {
-		_, err := os.Lstat(w.filename)
+		_, err := os.Lstat(currentName)
 		if err == nil { // file exists
 			// Find the next available number
 			num := 1
@@ -150,8 +153,8 @@ func (w *FileLogWriter) intRotate(basename string) error {
 				(w.daily && time.Now().Day() != w.daily_opendate) {
 				num = w.maxbackup - 1
 				for ; num >= 1; num-- {
-					fname = w.filename + fmt.Sprintf(".%d", num)
-					nfname := w.filename + fmt.Sprintf(".%d", num+1)
+					fname = w.filename + fmt.Sprintf(".%s.log.%d", today, num)
+					nfname := w.filename + fmt.Sprintf(".%s.log.%d", today, num+1)
 					_, err = os.Lstat(fname)
 					if err == nil {
 						os.Rename(fname, nfname)
@@ -159,7 +162,7 @@ func (w *FileLogWriter) intRotate(basename string) error {
 				}
 
 				// Rename the file to its newfound home
-				err = os.Rename(w.filename, fname)
+				err = os.Rename(currentName, fname)
 				if err != nil {
 					return fmt.Errorf("Rotate: %s\n", err)
 				}
@@ -195,9 +198,9 @@ func (w *FileLogWriter) intRotate(basename string) error {
 		deletefname := ""
 		for i := 0; err == nil && i <= w.maxbackup; i++ {
 			if i != 0 {
-				deletefname = basename + fmt.Sprintf(".%s.log.%d", deleteday, i)
+				deletefname = w.filename + fmt.Sprintf(".%s.log.%d", deleteday, i)
 			} else {
-				deletefname = basename + fmt.Sprintf(".%s.log", deleteday)
+				deletefname = w.filename + fmt.Sprintf(".%s.log", deleteday)
 			}
 			_, err := os.Stat(deletefname)
 
@@ -212,7 +215,7 @@ func (w *FileLogWriter) intRotate(basename string) error {
 	}
 
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fd, err := os.OpenFile(currentName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		return err
 	}
